@@ -5,6 +5,7 @@ set -uo pipefail
 
 REPO="/Users/aryanagarwal/repos/TradingAgents"
 BRANCH="claude/github-upload-check-e0fbcd"
+WORKTREE="/Users/aryanagarwal/repos/TradingAgents/.claude/worktrees/github-upload-check-e0fbcd"
 
 cd "$REPO" || exit 1
 
@@ -30,7 +31,17 @@ if ! git show-ref --verify --quiet "refs/heads/$BRANCH"; then
   exit 0
 fi
 
-git checkout "$BRANCH" || exit 1
+# The branch is checked out in a separate worktree, not in $REPO itself.
+if [ -d "$WORKTREE" ]; then
+  cd "$WORKTREE" || exit 1
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "Uncommitted changes present in $WORKTREE — skipping branch rebase."
+    exit 1
+  fi
+else
+  git checkout "$BRANCH" || exit 1
+fi
+
 if ! git rebase main; then
   echo "rebase conflict on $BRANCH — aborting rebase, leaving branch untouched."
   git rebase --abort
